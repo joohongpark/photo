@@ -1,0 +1,93 @@
+.app {
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.controls {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+}
+
+.controls button {
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.controls button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.controls button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.effect-controls {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.effect-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.effect-controls select,
+.effect-controls input[type="range"] {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.effect-controls input[type="range"] {
+  width: 100px;
+}
+
+.history-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.canvas-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-height: 400px;
+  overflow: auto;
+}
+
+.canvas-container canvas {
+  max-width: 100%;
+  max-height: 80vh;
+  cursor: crosshair;
+  border: 1px solid #ddd;
+}
+
+.placeholder {
+  padding: 40px;
+  color: #666;
+  font-size: 18px;
+  text-align: center;
+}
