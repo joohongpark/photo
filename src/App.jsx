@@ -14,15 +14,12 @@ function App() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 })
   const [brushPath, setBrushPath] = useState([])
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-  const [showBrushCursor, setShowBrushCursor] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
   const [history, setHistory] = useState([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
-  const imageRef = useRef(null)
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0]
@@ -304,32 +301,32 @@ function App() {
     const actualY = Math.floor(y)
     const actualWidth = Math.floor(width)
     const actualHeight = Math.floor(height)
-    
+
     const tempCanvas = document.createElement('canvas')
     const tempCtx = tempCanvas.getContext('2d')
-    
+
     tempCanvas.width = actualWidth
     tempCanvas.height = actualHeight
-    
+
     const imageData = ctx.getImageData(actualX, actualY, actualWidth, actualHeight)
     tempCtx.putImageData(imageData, 0, 0)
-    
+
     const scale = Math.max(0.05, 1 - (blurIntensity / 50))
     const blurredWidth = Math.max(1, Math.floor(actualWidth * scale))
     const blurredHeight = Math.max(1, Math.floor(actualHeight * scale))
-    
+
     const blurCanvas = document.createElement('canvas')
     const blurCtx = blurCanvas.getContext('2d')
     blurCanvas.width = blurredWidth
     blurCanvas.height = blurredHeight
-    
+
     blurCtx.imageSmoothingEnabled = true
     blurCtx.drawImage(tempCanvas, 0, 0, actualWidth, actualHeight, 0, 0, blurredWidth, blurredHeight)
-    
+
     tempCtx.clearRect(0, 0, actualWidth, actualHeight)
     tempCtx.imageSmoothingEnabled = true
     tempCtx.drawImage(blurCanvas, 0, 0, blurredWidth, blurredHeight, 0, 0, actualWidth, actualHeight)
-    
+
     const blurredData = tempCtx.getImageData(0, 0, actualWidth, actualHeight)
     ctx.putImageData(blurredData, actualX, actualY)
   }, [blurIntensity])
@@ -443,8 +440,8 @@ function App() {
       <header className="app-header">
         <h1>🛡️ Privacy Shield</h1>
         <p className="subtitle">개인정보 보호 이미지 편집기</p>
-        <button 
-          className="info-toggle" 
+        <button
+          className="info-toggle"
           onClick={() => setShowInfo(!showInfo)}
         >
           {showInfo ? '📋 사용법 및 개인정보 보호 안내 접기 ▲' : '📋 사용법 및 개인정보 보호 안내 펼치기 ▼'}
@@ -469,7 +466,7 @@ function App() {
           </div>
         )}
       </header>
-      
+
       <div className="controls">
         <input
           type="file"
