@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import './App.css'
 
 function App() {
@@ -6,17 +6,19 @@ function App() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [dragEnd, setDragEnd] = useState({ x: 0, y: 0 })
-  const [blurIntensity, setBlurIntensity] = useState(10)
+  const [blurIntensity, setBlurIntensity] = useState(25)
   const [mosaicSize, setMosaicSize] = useState(10)
-  const [effectType, setEffectType] = useState('blur')
+  const [effectType, setEffectType] = useState('mosaic')
   const [editMode, setEditMode] = useState('drag')
   const [brushSize, setBrushSize] = useState(20)
   const [isDrawing, setIsDrawing] = useState(false)
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 })
   const [brushPath, setBrushPath] = useState([])
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [showBrushCursor, setShowBrushCursor] = useState(false)
   const [history, setHistory] = useState([])
   const [historyIndex, setHistoryIndex] = useState(-1)
-  
+
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
   const imageRef = useRef(null)
@@ -40,7 +42,7 @@ function App() {
   const saveToHistory = (imageData) => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-    
+
     if (imageData instanceof Image) {
       canvas.width = imageData.width
       canvas.height = imageData.height
@@ -50,7 +52,7 @@ function App() {
       canvas.height = canvasRef.current.height
       ctx.putImageData(imageData, 0, 0)
     }
-    
+
     const newHistory = history.slice(0, historyIndex + 1)
     newHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height))
     setHistory(newHistory)
@@ -74,10 +76,10 @@ function App() {
   const downloadImage = () => {
     const canvas = canvasRef.current
     if (!canvas) return
-    
+
     const link = document.createElement('a')
-    link.download = 'edited-photo.png'
-    link.href = canvas.toDataURL()
+    link.download = 'edited-photo.jpg'
+    link.href = canvas.toDataURL('image/jpeg', 0.9)
     link.click()
   }
 
@@ -86,7 +88,12 @@ function App() {
     const ctx = canvas.getContext('2d')
     canvas.width = imageData.width
     canvas.height = imageData.height
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.putImageData(imageData, 0, 0)
+
+    const newImage = new Image()
+    newImage.onload = () => setImage(newImage)
+    newImage.src = canvas.toDataURL('image/jpeg', 0.95)
   }
 
   useEffect(() => {
@@ -104,7 +111,7 @@ function App() {
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
-    
+
     return {
       x: (event.clientX - rect.left) * scaleX,
       y: (event.clientY - rect.top) * scaleY
@@ -117,9 +124,9 @@ function App() {
     const startY = Math.max(0, y - radius)
     const width = Math.min(size, ctx.canvas.width - startX)
     const height = Math.min(size, ctx.canvas.height - startY)
-    
+
     if (width <= 0 || height <= 0) return
-    
+
     if (effectType === 'blur') {
       applyBlur(ctx, startX, startY, width, height)
     } else {
@@ -129,28 +136,48 @@ function App() {
 
   const drawBrushPreview = (ctx, path, radius) => {
     if (path.length === 0) return
-    
+
     ctx.save()
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
-    
+
     for (let i = 0; i < path.length; i++) {
       ctx.beginPath()
       ctx.arc(path[i].x, path[i].y, radius, 0, 2 * Math.PI)
       ctx.fill()
     }
-    
+
+    ctx.restore()
+  }
+
+  const drawBrushCursor = (ctx, x, y, radius) => {
+    ctx.save()
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'
+    ctx.lineWidth = 5
+    ctx.setLineDash([5, 5])
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, 2 * Math.PI)
+    ctx.stroke()
+
+    ctx.strokeStyle = 'rgba(0, 0, 255, 0.8)'
+    ctx.lineWidth = 5
+    ctx.setLineDash([5, 5])
+    ctx.lineDashOffset = 5
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, 2 * Math.PI)
+    ctx.stroke()
+
     ctx.restore()
   }
 
   const applyMosaicToBrushPath = (ctx, path, radius) => {
     if (path.length === 0) return
-    
+
     const processedPixels = new Set()
-    
+
     for (const point of path) {
       const centerX = Math.round(point.x)
       const centerY = Math.round(point.y)
-      
+
       for (let y = centerY - radius; y <= centerY + radius; y++) {
         for (let x = centerX - radius; x <= centerX + radius; x++) {
           const dx = x - centerX
@@ -159,37 +186,37 @@ function App() {
             const blockX = Math.floor(x / mosaicSize) * mosaicSize
             const blockY = Math.floor(y / mosaicSize) * mosaicSize
             const blockKey = `${blockX},${blockY}`
-            
-            if (!processedPixels.has(blockKey) && 
-                blockX >= 0 && blockY >= 0 && 
-                blockX < ctx.canvas.width && blockY < ctx.canvas.height) {
-              
+
+            if (!processedPixels.has(blockKey) &&
+              blockX >= 0 && blockY >= 0 &&
+              blockX < ctx.canvas.width && blockY < ctx.canvas.height) {
+
               const blockWidth = Math.min(mosaicSize, ctx.canvas.width - blockX)
               const blockHeight = Math.min(mosaicSize, ctx.canvas.height - blockY)
-              
+
               const imageData = ctx.getImageData(blockX, blockY, blockWidth, blockHeight)
               const data = imageData.data
-              
+
               let r = 0, g = 0, b = 0, count = 0
-              
+
               for (let i = 0; i < data.length; i += 4) {
                 r += data[i]
                 g += data[i + 1]
                 b += data[i + 2]
                 count++
               }
-              
+
               if (count > 0) {
                 r = Math.round(r / count)
                 g = Math.round(g / count)
                 b = Math.round(b / count)
-                
+
                 for (let i = 0; i < data.length; i += 4) {
                   data[i] = r
                   data[i + 1] = g
                   data[i + 2] = b
                 }
-                
+
                 ctx.putImageData(imageData, blockX, blockY)
                 processedPixels.add(blockKey)
               }
@@ -203,7 +230,7 @@ function App() {
   const handleMouseDown = (event) => {
     if (!image) return
     const coords = getCanvasCoordinates(event)
-    
+
     if (editMode === 'drag') {
       setDragStart(coords)
       setDragEnd(coords)
@@ -218,32 +245,33 @@ function App() {
   const handleMouseMove = (event) => {
     if (!image) return
     const coords = getCanvasCoordinates(event)
-    
+    setMousePos(coords)
+
     if (editMode === 'drag' && isDragging) {
       setDragEnd(coords)
-      
+
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
-      
+
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(image, 0, 0)
-      
+
       const x = Math.min(dragStart.x, coords.x)
       const y = Math.min(dragStart.y, coords.y)
       const width = Math.abs(coords.x - dragStart.x)
       const height = Math.abs(coords.y - dragStart.y)
-      
+
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
       ctx.fillRect(x, y, width, height)
     } else if (editMode === 'brush' && isDrawing) {
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
-      
+
       const dx = coords.x - lastPos.x
       const dy = coords.y - lastPos.y
       const distance = Math.sqrt(dx * dx + dy * dy)
       const steps = Math.max(1, Math.floor(distance / 5))
-      
+
       const newPoints = []
       for (let i = 1; i <= steps; i++) {
         const t = i / steps
@@ -251,46 +279,73 @@ function App() {
         const y = lastPos.y + dy * t
         newPoints.push({ x, y })
       }
-      
+
       const updatedPath = [...brushPath, ...newPoints]
       setBrushPath(updatedPath)
-      
+
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(image, 0, 0)
       drawBrushPreview(ctx, updatedPath, brushSize / 2)
-      
+
       setLastPos(coords)
+    } else if (editMode === 'brush' && !isDrawing) {
+      const canvas = canvasRef.current
+      const ctx = canvas.getContext('2d')
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(image, 0, 0)
+      drawBrushCursor(ctx, coords.x, coords.y, brushSize / 2)
     }
   }
 
-  const applyBlur = (ctx, x, y, width, height) => {
-    const imageData = ctx.getImageData(x, y, width, height)
+  const applyBlur = useCallback((ctx, x, y, width, height) => {
+    const actualX = Math.floor(x)
+    const actualY = Math.floor(y)
+    const actualWidth = Math.floor(width)
+    const actualHeight = Math.floor(height)
+    
     const tempCanvas = document.createElement('canvas')
     const tempCtx = tempCanvas.getContext('2d')
     
-    tempCanvas.width = width
-    tempCanvas.height = height
-    tempCtx.putImageData(imageData, 0, 0)
-    tempCtx.filter = `blur(${blurIntensity}px)`
-    tempCtx.drawImage(tempCanvas, 0, 0)
+    tempCanvas.width = actualWidth
+    tempCanvas.height = actualHeight
     
-    const blurredData = tempCtx.getImageData(0, 0, width, height)
-    ctx.putImageData(blurredData, x, y)
-  }
+    const imageData = ctx.getImageData(actualX, actualY, actualWidth, actualHeight)
+    tempCtx.putImageData(imageData, 0, 0)
+    
+    const scale = Math.max(0.05, 1 - (blurIntensity / 50))
+    const blurredWidth = Math.max(1, Math.floor(actualWidth * scale))
+    const blurredHeight = Math.max(1, Math.floor(actualHeight * scale))
+    
+    const blurCanvas = document.createElement('canvas')
+    const blurCtx = blurCanvas.getContext('2d')
+    blurCanvas.width = blurredWidth
+    blurCanvas.height = blurredHeight
+    
+    blurCtx.imageSmoothingEnabled = true
+    blurCtx.drawImage(tempCanvas, 0, 0, actualWidth, actualHeight, 0, 0, blurredWidth, blurredHeight)
+    
+    tempCtx.clearRect(0, 0, actualWidth, actualHeight)
+    tempCtx.imageSmoothingEnabled = true
+    tempCtx.drawImage(blurCanvas, 0, 0, blurredWidth, blurredHeight, 0, 0, actualWidth, actualHeight)
+    
+    const blurredData = tempCtx.getImageData(0, 0, actualWidth, actualHeight)
+    ctx.putImageData(blurredData, actualX, actualY)
+  }, [blurIntensity])
 
-  const applyMosaic = (ctx, x, y, width, height) => {
+  const applyMosaic = useCallback((ctx, x, y, width, height) => {
     const imageData = ctx.getImageData(Math.floor(x), Math.floor(y), Math.floor(width), Math.floor(height))
     const data = imageData.data
     const w = Math.floor(width)
     const h = Math.floor(height)
-    
+
     for (let py = 0; py < h; py += mosaicSize) {
       for (let px = 0; px < w; px += mosaicSize) {
         let r = 0, g = 0, b = 0, count = 0
-        
+
         const blockWidth = Math.min(mosaicSize, w - px)
         const blockHeight = Math.min(mosaicSize, h - py)
-        
+
         for (let dy = 0; dy < blockHeight; dy++) {
           for (let dx = 0; dx < blockWidth; dx++) {
             const idx = ((py + dy) * w + (px + dx)) * 4
@@ -300,12 +355,12 @@ function App() {
             count++
           }
         }
-        
+
         if (count > 0) {
           r = Math.round(r / count)
           g = Math.round(g / count)
           b = Math.round(b / count)
-          
+
           for (let dy = 0; dy < blockHeight; dy++) {
             for (let dx = 0; dx < blockWidth; dx++) {
               const idx = ((py + dy) * w + (px + dx)) * 4
@@ -317,51 +372,51 @@ function App() {
         }
       }
     }
-    
+
     ctx.putImageData(imageData, Math.floor(x), Math.floor(y))
-  }
+  }, [mosaicSize])
 
   const handleMouseUp = () => {
     if (!image) return
-    
+
     if (editMode === 'drag' && isDragging) {
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
-      
+
       const x = Math.min(dragStart.x, dragEnd.x)
       const y = Math.min(dragStart.y, dragEnd.y)
       const width = Math.abs(dragEnd.x - dragStart.x)
       const height = Math.abs(dragEnd.y - dragStart.y)
-      
+
       if (width > 5 && height > 5) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(image, 0, 0)
-        
+
         if (effectType === 'blur') {
           applyBlur(ctx, x, y, width, height)
         } else {
           applyMosaic(ctx, x, y, width, height)
         }
-        
+
         const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
         saveToHistory(newImageData)
-        
+
         const newImage = new Image()
         newImage.onload = () => setImage(newImage)
-        newImage.src = canvas.toDataURL()
+        newImage.src = canvas.toDataURL('image/jpeg', 0.95)
       } else {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(image, 0, 0)
       }
-      
+
       setIsDragging(false)
     } else if (editMode === 'brush' && isDrawing) {
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
-      
+
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(image, 0, 0)
-      
+
       if (effectType === 'blur') {
         for (const point of brushPath) {
           applyEffectAtPoint(ctx, point.x, point.y, brushSize / 2)
@@ -369,14 +424,14 @@ function App() {
       } else {
         applyMosaicToBrushPath(ctx, brushPath, brushSize / 2)
       }
-      
+
       const newImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       saveToHistory(newImageData)
-      
+
       const newImage = new Image()
       newImage.onload = () => setImage(newImage)
-      newImage.src = canvas.toDataURL()
-      
+      newImage.src = canvas.toDataURL('image/jpeg', 0.95)
+
       setIsDrawing(false)
       setBrushPath([])
     }
@@ -395,7 +450,7 @@ function App() {
         <button onClick={() => fileInputRef.current.click()}>
           이미지 선택
         </button>
-        
+
         <div className="effect-controls">
           <label>
             편집 모드:
@@ -404,7 +459,7 @@ function App() {
               <option value="brush">펜 모드</option>
             </select>
           </label>
-          
+
           <label>
             효과 타입:
             <select value={effectType} onChange={(e) => setEffectType(e.target.value)}>
@@ -412,7 +467,7 @@ function App() {
               <option value="mosaic">모자이크</option>
             </select>
           </label>
-          
+
           {effectType === 'blur' ? (
             <label>
               블러 강도: {blurIntensity}px
@@ -436,7 +491,7 @@ function App() {
               />
             </label>
           )}
-          
+
           {editMode === 'brush' && (
             <label>
               펜 굵기: {brushSize}px
@@ -450,7 +505,7 @@ function App() {
             </label>
           )}
         </div>
-        
+
         <div className="history-controls">
           <button onClick={undo} disabled={historyIndex <= 0}>
             실행 취소
@@ -463,16 +518,17 @@ function App() {
           </button>
         </div>
       </div>
-      
+
       <div className="canvas-container">
         {image ? (
           <canvas
             ref={canvasRef}
+            className={editMode === 'brush' ? 'brush-mode' : ''}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            style={{ cursor: editMode === 'brush' ? 'crosshair' : 'crosshair' }}
+            onMouseEnter={() => editMode === 'brush' && setShowBrushCursor(true)}
           />
         ) : (
           <div className="placeholder">

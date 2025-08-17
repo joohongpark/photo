@@ -85,6 +85,10 @@
   border: 1px solid #ddd;
 }
 
+.canvas-container canvas.brush-mode {
+  cursor: none;
+}
+
 .placeholder {
   padding: 40px;
   color: #666;
