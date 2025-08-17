@@ -6,6 +6,95 @@
   gap: 20px;
 }
 
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.app-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 2.5em;
+  font-weight: bold;
+}
+
+.app-header .subtitle {
+  margin: 0 0 25px 0;
+  font-size: 1.2em;
+  opacity: 0.9;
+}
+
+.info-toggle {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  margin-top: 15px;
+  transition: all 0.3s ease;
+}
+
+.info-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.info-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 20px;
+  text-align: left;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.usage-info, .privacy-info {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.usage-info h3, .privacy-info h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.1em;
+}
+
+.usage-info ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.usage-info li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.privacy-info p {
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+  .info-section {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .app-header h1 {
+    font-size: 2em;
+  }
+}
+
 .controls {
   background: white;
   padding: 20px;

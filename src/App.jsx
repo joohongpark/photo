@@ -16,6 +16,7 @@ function App() {
   const [brushPath, setBrushPath] = useState([])
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [showBrushCursor, setShowBrushCursor] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
   const [history, setHistory] = useState([])
   const [historyIndex, setHistoryIndex] = useState(-1)
 
@@ -439,6 +440,36 @@ function App() {
 
   return (
     <div className="app">
+      <header className="app-header">
+        <h1>🛡️ Privacy Shield</h1>
+        <p className="subtitle">개인정보 보호 이미지 편집기</p>
+        <button 
+          className="info-toggle" 
+          onClick={() => setShowInfo(!showInfo)}
+        >
+          {showInfo ? '📋 사용법 및 개인정보 보호 안내 접기 ▲' : '📋 사용법 및 개인정보 보호 안내 펼치기 ▼'}
+        </button>
+        {showInfo && (
+          <div className="info-section">
+            <div className="usage-info">
+              <h3>💡 사용법</h3>
+              <ul>
+                <li>📸 이미지를 선택하고 편집 모드를 선택하세요</li>
+                <li>🖱️ <strong>드래그 모드</strong>: 영역을 드래그해서 선택</li>
+                <li>✏️ <strong>펜 모드</strong>: 마우스로 자유롭게 그리기</li>
+                <li>🔧 효과 타입과 강도를 조절할 수 있습니다</li>
+              </ul>
+            </div>
+            <div className="privacy-info">
+              <h3>🔒 개인정보 보호</h3>
+              <p>• 모든 이미지는 브라우저에서만 처리됩니다</p>
+              <p>• 서버에 업로드되거나 저장되지 않습니다</p>
+              <p>• 100% 로컬 처리로 완전한 프라이버시 보장</p>
+            </div>
+          </div>
+        )}
+      </header>
+      
       <div className="controls">
         <input
           type="file"
